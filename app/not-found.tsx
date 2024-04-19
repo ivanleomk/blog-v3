@@ -5,8 +5,8 @@ export default function NotFound() {
         404 - Page Not Found
       </h1>
       <p className="mb-4">
-       The page you are looking for does not exist.
+        {`I've recently migrated my blog to a new codebase and in the process, I've chosen to remove some of the posts. As a result, this page no longer exists on my blog`}
       </p>
     </section>
-  )
+  );
 }
