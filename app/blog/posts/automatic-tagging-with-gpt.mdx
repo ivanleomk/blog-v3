@@ -11,12 +11,7 @@ description: Using LLMs to automatically tag and categorize your favourite eatin
 
 If you've ever used Google Maps, you've definitely struggled to decide where to go to eat. The UI ... frankly sucks beyond belief for an application that has all the data and compute that it has.
 
-<KommyImage
-  src="/images/Google_Maps.png"
-  height={400}
-  width={400}
-  blogImage={true}
-/>
+<img src="/images/Google_Maps.png" />
 
 There's not even a simple way to filter the saved places by keywords, categories or even just the location. You need to manually pan and find something that you like.
 
@@ -26,11 +21,8 @@ So i thought I'd crawl it for the fun of it since I wanted more control over my 
 
 When you navigate to a saved location, you see the following
 
-<KommyImage
+<img
   src="/images/Saved_Location.png"
-  height={400}
-  width={400}
-  blogImage={true}
 />
 
 You get
@@ -43,12 +35,7 @@ among a few other bits of data. But if you use some of the default categories, t
 
 We simply visit the page that's linked to the listing!
 
-<KommyImage
-  src="/images/Linked_page.png"
-  height={400}
-  width={400}
-  blogImage={true}
-/>
+<img src="/images/Linked_page.png" />
 
 What makes it even better is that the page link itself contains a lot of valuable information
 
@@ -62,12 +49,7 @@ We can actually extract out things like the lattitude and longtitude from the li
 
 Even the HTML isn't too bad for scrapping with unique class names that we can target as seen below
 
-<KommyImage
-  src="/images/Google_Html.png"
-  height={400}
-  width={400}
-  blogImage={true}
-/>
+<img src="/images/Google_Html.png" />
 
 ## The Code
 
@@ -146,7 +128,7 @@ This simply code chunk is enough to navigate to your list url. All our crawler d
 3. Extract the data from the page
 4. Go back to the original list url
 
-<KommyImage
+<img
   src="/images/crawling.gif"
   height={400}
   width={400}
