@@ -26,6 +26,8 @@ Before starting on the big training job, it's important to make sure that your e
 
 I typically work with a training dataset of 1000-2000 values when I'm writing these scripts. My goal is to ideally have something that can be ran in < 60s at most so that I can check for any quick implementation issues. This has caught many different bugs in my codebase because we can iterate and experiment quickly. ( **Note** : Depending on your pipeline, this might be even smaller, for some projects I've done just 30-50 values for the initial stage )
 
+Here's an example below using the hugging face `datasets` library where I take a small slice of 20 items that have been filtered using the `.filter` method.
+
 ```python
 from datasets import load_dataset
 
