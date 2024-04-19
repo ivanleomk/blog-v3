@@ -6,10 +6,8 @@ description: Using LLMs to automatically tag and categorize your favourite eatin
 
 # Introduction
 
-<Callout>
-  As usual, you can find the code for this specific article
-  [here](https://github.com/ivanleomk/scrape-google-maps)
-</Callout>
+> As usual, you can find the code for this specific article
+> [here](https://github.com/ivanleomk/scrape-google-maps)
 
 If you've ever used Google Maps, you've definitely struggled to decide where to go to eat. The UI ... frankly sucks beyond belief for an application that has all the data and compute that it has.
 
@@ -77,27 +75,28 @@ Even the HTML isn't too bad for scrapping with unique class names that we can ta
 
 Before we start coding out any code, let's start by defining some models
 
-<CodeTitle lang="py" title="model.py" />
-```py class Status(Enum): CLOSED = "Closed" TEMPORARILY_CLOSED = "Temporarily Closed"
-OPEN = "Open"
+```py
+class Status(Enum):
+    CLOSED = "Closed"
+    TEMPORARILY_CLOSED = "Temporarily Closed"
+    OPEN = "Open"
 
 class Listing(BaseModel):
-title: str
-rating: Optional[float]
-number_of_reviews: Optional[int]
-address: Optional[str]
-review: str
-hasDelivery: bool
-hasTakeaway: bool
-hasDineIn: bool
-category: Optional[str]
-status: str
-url: str
-address: str
-long: float
-lat: float
-
-````
+    title: str
+    rating: Optional[float]
+    number_of_reviews: Optional[int]
+    address: Optional[str]
+    review: str
+    hasDelivery: bool
+    hasTakeaway: bool
+    hasDineIn: bool
+    category: Optional[str]
+    status: str
+    url: str
+    address: str
+    long: float
+    lat: float
+```
 
 The `Status` class is an enumeration that represents the status of a listing. It has three possible values: `CLOSED`, `TEMPORARILY_CLOSED`, and `OPEN`.
 
@@ -136,7 +135,7 @@ list_url = // Your list url
 driver.get(list_url)
 time.sleep(5)
 
-````
+```
 
 ### Crawling the Data
 
@@ -282,11 +281,7 @@ Index(['title', 'rating', 'number_of_reviews', 'address', 'review',
       dtype='object')
 ```
 
-<Callout>
-
-Most of the code here for classification was modified from the following tweet which you can check out [here](https://twitter.com/_ScottCondron/status/1674420258080452610)
-
-</Callout>
+> Most of the code here for classification was modified from the following tweet which you can check out [here](https://twitter.com/_ScottCondron/status/1674420258080452610)
 
 ### Pydantic Models
 
@@ -303,21 +298,21 @@ class Location(BaseModel):
 
 We can then create a simple function to extract all of the data from our dataframe
 
-<CodeTitle title="Extract Data From Dataframe" lang="py" />
-```python locations = []
+```python
+
+locations = []
 
 for row in df.itertuples():
-location = Location(
-title = row.title,
-rating = row.rating/2,
-number_of_reviews = row.number_of_reviews,
-user_review=row.review,
-categories = [row.category]
-)
-locations.append(location)
+    location = Location(
+        title = row.title,
+        rating = row.rating/2,
+        number_of_reviews = row.number_of_reviews,
+        user_review=row.review,
+        categories = [row.category]
+    )
+    locations.append(location)
 
-````
-
+```
 
 ### Yake-ing out the keywords
 
@@ -329,12 +324,12 @@ We can install the library by running the following command
 
 ```bash
 pip install git+https://github.com/LIAAD/yake
-````
+```
 
 We can then use the following code to extract out the keywords
 
-<CodeTitle lang="py" title="Keyword Extractor" />
-```python import yake
+```py
+import yake
 
 kw_extractor = yake.KeywordExtractor()
 keywords = set([])
@@ -345,21 +340,13 @@ new_keywords = kw_extractor.extract_keywords(formatted_string)
 extracted_keywords = [x[0] for x in new_keywords]
 for extracted_keyword in extracted_keywords:
 keywords.add(extracted_keyword)
-
-````
+```
 
 Since Yake is simply extracting out semantic bits which might have useful information, we end up with certain tags which aren't very useful. Here are some examples that don't really make sense
 
 ```python
-['AMAZING',
- 'AMAZING DUCK',
- 'AMAZING DUCK BREAST',
-  ....
-  'FUCKING',
- 'FUCKING AMAZING',
- 'FUCKING AMAZING DUCK',
- ]
-````
+['AMAZING','AMAZING DUCK','AMAZING DUCK BREST']
+```
 
 ### GPT Keywords
 
@@ -367,11 +354,13 @@ This is where GPT comes in. We basically get it to look at all our keywords and 
 
 I was a bit lazy to filter it so I decided to just tell GPT to only consider english categories.
 
-<CodeTitle lang="py" title="Generate Categories" />
-```python class Tags(BaseModel): categories: List[str] def generate_categories(keywords):
-keywords_with_new_lines = '\n'.join(keywords)
+```py
+python class Tags(BaseModel):
+    categories: List[str]
 
-    prompt = f"""
+def generate_categories(keywords): keywords_with_new_lines = '\n'.join(keywords)
+
+prompt = f"""
     Invent categories for some restaurants. You are about to be provided with a brief description of a restrautn from google maps.
 
     Here are some categories that we have. Only consider english categories.
@@ -386,26 +375,26 @@ keywords_with_new_lines = '\n'.join(keywords)
         model = "gpt-3.5-turbo-16k",
         messages = [
             {'role':'user','content':prompt}
-        ],
-        functions = [
-            {
-                'name': 'output_categories',
-                'description': 'The final list of categories',
-                'parameters':Tags.schema()
-            }
-        ],
-        function_call={
-            'name':'output_categories'
+    ]
+    functions = [
+        {
+            'name': 'output_categories',
+            'description': 'The final list of categories',
+            'parameters':Tags.schema()
         }
-    )
+    ],
+    function_call={
+        'name':'output_categories'
+    }
+)
 
-    parsed_json = response.choices[0]["message"]["function_call"]["arguments"]
-    categories = json.loads(parsed_json)["categories"]
-    return categories
+parsed_json = response.choices[0]["message"]["function_call"]["arguments"]
+categories = json.loads(parsed_json)["categories"]
+return categories
 
 res = generate_categories(list(keywords))
 
-````
+```
 
 Since most of my user reviews had been rather sporadic and inconsistent in length, I thought it wouldn't be useful to force gpt to generate a lot of different recomendations but instead simply focus on a small set of categories - 30 seemed like a good number.
 
@@ -413,27 +402,26 @@ Since most of my user reviews had been rather sporadic and inconsistent in lengt
 
 Once we had our categories, we now need to categorise and assign categories to each individual item with .. gpt again.
 
-<CodeTitle lang = "py" title = "Categorise" />
-```python
+```py
 @retry(tries=3, delay=2)
-def tag_restaurant(location:Location,categories:list[str]):
+def location:Location,categories:list[str]):
     joined_categories = '\n'.join(categories)
     prompt = f"""
-    Given a Restaurant title and a candid user review, return a new list of 4 categories for the following restaurant
+        Given a Restaurant title and a candid user review, return a new list of 4 categories for the following restaurant
 
-    You can use the following categories
-    {joined_categories}
+        You can use the following categories
+        {joined_categories}
 
-    Restaurant Title: {location.title},
-    Existing Categories: [{','.join(location.categories)}]
-    User Review: {location.user_review}
+        Restaurant Title: {location.title},
+        Existing Categories: [{','.join(location.categories)}]
+        User Review: {location.user_review}
 
-    You MUST only response with each chose category separated by a new line.
-    You MUST not say anything after finishing.
-    Your response will be used to tag the paper so don't say anything!
+        You MUST only response with each chose category separated by a new line.
+        You MUST not say anything after finishing.
+        Your response will be used to tag the paper so don't say anything!
 
-    The 4 Categories:
-    """
+        The 4 Categories:
+    ""
 
     response = openai.ChatCompletion.create(
         model = "gpt-3.5-turbo-16k",
@@ -442,7 +430,8 @@ def tag_restaurant(location:Location,categories:list[str]):
         ]
     )
     return response["choices"][0]["message"]["content"].split("\n")
-````
+
+```
 
 Over here, we're using the `retry` package which allows for automatic retries in case the API fails or the function throws an error. This is useful since the API can sometimes fail due to rate limits.
 
@@ -454,13 +443,13 @@ Once we've got the categorisation functionality down, all we need is to then wor
 
 We can do so with the following loop.
 
-<CodeTitle lang="py" title="Categorise" />
-```python parsed_locations = []
+```py
+parsed_locations = []
 
 for location in locations:
-new_categories = tag_restaurant(location,categories)
-new_location = location.copy()
-new_location.categories.extend(new_categories)
+    new_categories = tag_restaurant(location,categories)
+    new_location = location.copy()
+    new_location.categories.extend(new_categories)
 
     unique_categories = list(
         set(
@@ -472,11 +461,11 @@ new_location.categories.extend(new_categories)
 
     parsed_locations.append(new_location)
 
-````
+```
 
 before writing it to a csv with the following function
 
-```python
+```py
 def write_locations_to_csv(locations: List[Location], file_name: str):
     fieldnames = list(Location.schema()["properties"].keys())
 
@@ -488,7 +477,7 @@ def write_locations_to_csv(locations: List[Location], file_name: str):
             writer.writerow(location.dict())
 
 write_locations_to_csv(parsed_locations, "locations.csv")
-````
+```
 
 The results aren't honestly too bad - we can see from the quick screengrab that I took that it was able to accurately tag certain places correctly - the function sometime generated duplicate tags and so the use of a set in our code was useful to remove duplicates.
 
@@ -496,20 +485,18 @@ The results aren't honestly too bad - we can see from the quick screengrab that 
 
 I used streamlit to build a quick UI for us to iterate through the different categories and see what the results were like.
 
-<CodeTitle lang="py" title="Streamlit UI" />
-```python import streamlit as st import pandas as pd from pydantic import BaseModel
+```python
+import streamlit as st
+import pandas as pd
+from pydantic import BaseModel
 from typing import List
 
 df = pd.read_csv("./locations.csv")
 
-category_set = set()
-parsed_categories = [
-[j.strip() for j in i[1:-1].replace("'", "").split(",")]
-for i in df["categories"].to_list()
-]
+parsed_categories = [[j.strip() for j in i[1:-1].replace("'", "").split(",")] for i in df["categories"].to_list()]
 for cat_list in parsed_categories:
-for cat in cat_list:
-category_set.add(cat)
+    for cat in cat_list:
+        category_set.add(cat)
 
 st.title("Location Filter")
 
@@ -522,12 +509,7 @@ filtered_df = df[df["title"].str.contains(title_filter, case=False)]
 
 unique_categories = list(category_set)
 selected_categories = st.sidebar.multiselect("Filter by categories", unique_categories)
-filtered_df = filtered_df[
-filtered_df["categories"].apply(
-lambda x: any(category in x for category in selected_categories)
-or len(selected_categories) == 0
-)
-]
+filtered_df = filtered_df[filtered_df["categories"].apply(lambda x: any(category in x for category in selected_categories) or len(selected_categories) == 0)]
 
 print(unique_categories)
 
@@ -554,5 +536,4 @@ st.write(filtered_df[["title", "number_of_reviews", "rating", "user_review"]])
 
 This is what the UI looks like
 
-<KommyImage src = "/images/streamlit-ui.gif" width = "400" height = "400"  blogImage={true} />
-```
+<img src="/images/streamlit-ui.gif" />

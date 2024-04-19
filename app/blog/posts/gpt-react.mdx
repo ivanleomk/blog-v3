@@ -78,13 +78,13 @@ Once we've extracted the source code out, we now have a collection of code chunk
 
 ```py
 class Task(BaseModel):
-  """
-  This is a class which represents a potential task that could have resulted in the code snippet provided
+    """
+    This is a class which represents a potential task that could have resulted in the code snippet provided
 
-  eg. I want a button that generates a toast when it's clicked
-  eg. I want a login form which allows users to key in their email and validates that it belongs to the facebook.com domain.
-  """
-  task: str = Field(description="This is a task which might have resulted in the component")
+    eg. I want a button that generates a toast when it's clicked
+    eg. I want a login form which allows users to key in their email and validates that it belongs to the facebook.com domain.
+    """
+    task: str = Field(description="This is a task which might have resulted in the component")
 ```
 
 it's useful here to point out that the more examples you provide and the more descriptive your class definition is, the better your eventual outputs are going to be. But since we want multiple tasks instead of just one from the code chunk, we can take advantage of the `MultiTask` functionality provided in the `instructor` library.
@@ -101,34 +101,34 @@ We can then use this in our code as follows
 
 ```py
 completion = openai.ChatCompletion.create(
-  model="gpt-4",
-  temperature=0.3,
-  stream=False,
-  max_retries=2,
-  functions=[MultiTaskType.openai_schema],
-  function_call={"name": MultiTaskType.openai_schema["name"]},
-  messages=[
-  {
-      "role": "system",
-      "content": f"As an experienced programmer using the NextJS Framework with the @shadcn/ui and tailwindcss library, you are tasked with brainstorming some tasks that could have resulted in the following code chunk being produced."
-  },
-  {
-      "role":"assistant",
-      "content":"Examples of such tasks could be adding a toast component to display temporary messages, using a specific variant avaliable in the @shadcn/ui library or configuring a component that toggles between two display states"
-  },
-  {
-  "role":"assistant",
-  "content": "Tasks should be as diverse as possible while staying relevant. Generate at most 4 Tasks."
-      },
-  {
-      "role": "user",
-      "content": f"{chunk}",
-  },
-  ],
-  max_tokens=1000,
-  )
-  res = MultiTaskType.from_response(completion)
-  return [i.task for i in list(res)[0][1]]
+        model="gpt-4",
+        temperature=0.3,
+        stream=False,
+        max_retries=2,
+        functions=[MultiTaskType.openai_schema],
+        function_call={"name": MultiTaskType.openai_schema["name"]},
+        messages=[
+        {
+            "role": "system",
+            "content": f"As an experienced programmer using the NextJS Framework with the @shadcn/ui and tailwindcss library, you are tasked with brainstorming some tasks that could have resulted in the following code chunk being produced."
+        },
+        {
+            "role":"assistant",
+            "content":"Examples of such tasks could be adding a toast component to display temporary messages, using a specific variant avaliable in the @shadcn/ui library or configuring a component that toggles between two display states"
+        },
+        {
+        "role":"assistant",
+        "content": "Tasks should be as diverse as possible while staying relevant. Generate at most 4 Tasks."
+            },
+        {
+            "role": "user",
+            "content": f"{chunk}",
+        },
+        ],
+        max_tokens=1000,
+        )
+res = MultiTaskType.from_response(completion)
+return [i.task for i in list(res)[0][1]]
 ```
 
 Notice here that we get automatic retries with the new `max_retries` parameter in the `openai` library thanks to patching openai. While running this command, since we're firing out a lot of different api calls to gpt-4, we might also get rate-limited.
