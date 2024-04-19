@@ -22,12 +22,15 @@ export function BlogPosts() {
             href={`/blog/${post.slug}`}
           >
             <div className="w-full flex flex-col md:flex-row space-x-0 md:space-x-2">
-              <p className="text-neutral-600 dark:text-neutral-400 w-[100px] tabular-nums">
+              <p className="text-neutral-600 dark:text-neutral-400 w-[150px] tabular-nums">
                 {formatDate(post.metadata.publishedAt, false)}
               </p>
-              <p className="text-neutral-900 dark:text-neutral-100 tracking-tight">
-                {post.metadata.title}
-              </p>
+              <div className="w-full ">
+                <p className="text-neutral-900 text-lg dark:text-neutral-100 tracking-tight">
+                  {post.metadata.title}
+                </p>
+                <p className="text-xs">{post.metadata.description}</p>
+              </div>
             </div>
           </Link>
         ))}
