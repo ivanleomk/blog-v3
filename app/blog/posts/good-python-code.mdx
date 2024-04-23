@@ -102,7 +102,7 @@ This might be overstated but I think everyone should take some time to at least 
 - Writing common counters/dictionary insertion logic etc - use Collections
 - Caching Data/Working with Curried functions? - use functools
 
-If a commonly used library provides some functionality, you should use it. It's rarely going to be beneficial to spend hours writing your own version unless it's for educational purposes. The simple but effective hack I've found has been to use a variant of the following prompt.
+If a commonly used libarary provides some functionality, you should use it. It's rarely going to be beneficial to spend hours writing your own version unless it's for educational purposes. The simple but effective hack I've found has been to use a variant of the following prompt.
 
 ```bash
 I want to do <task>. How can I do so with <commonly used library>. 
@@ -317,15 +317,15 @@ metrics = {"recall": calculate_recall, "mrr": calculate_mrr}
 evals = {}
 
 
-def slice_predictions_at_k(score_fn, k:int):
+def predictions_at_k(score_fn, k:int):
     def wrapper(chunk_id, predictions):
         return score(chunk_id, predictions[:k])
 
     return wrapper
 
 
-for metric, sz in itertools.product(metrics.keys(), SIZES):
-    evals[f"{metric}@{sz}"] = slice_predictions_at_k(sz, metrics[metric])
+for metric, k in itertools.product(metrics.keys(), SIZES):
+    evals[f"{metric}@{k}"] = predictions_at_k(score_fn=metrics[metric], k=k)
 ```
 
 We can then take a given label and list of predictions and calculate the result as 
@@ -345,5 +345,3 @@ This is an extremely flexible function that we're using which gives us a pandas 
 ## Conclusion
 
 Everyone needs to write enough bad code to start writing better code. The path to writing better code is paved with a lot of PR reviews and reading better code examples. I've definitely written my share of bad code and I hope that this article helps you to see some interesting ways to write better code. 
-
-
