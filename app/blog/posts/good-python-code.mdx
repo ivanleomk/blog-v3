@@ -4,32 +4,45 @@ publishedAt: "2024-04-17"
 description: Speedrun your way to becoming a good python developer and don't make the same mistakes I did
 ---
 
-I've always used python for my interviews but it wasn't until about 6 months ago that I started to use python for all sorts of projects - from simple machine learning scripts to full blown applications. In the proccess, I've learnt a lot about what constitutes good python code and I hope that you'll find the tips in this article useful in your own projects.
-
-I've been lucky enough to have Jason (@jxnlco on twitter) review a good chunk of my code and I've found that these few things have made a massive difference in my code quality.
+In the past 6 months, I've 10xed the amount of python code I've written. In this article, I'll show you a few easy actionable tips to write better and more maintainable code. I've been lucky enough to have Jason (@jxnlco on twitter) review a good chunk of my code and I've found that these few things have made a massive difference in my code quality.
 
 1. using the `@classmethod` decorator
-2. taking time to learn about common libraries
-3. writing simpler functions
+2. learn the stdlib
+3. write simpler functions
 4. being a bit lazier - earn the abstraction
 5. decouple your implementation
 
 ## Use the classmethod decorator
 
-The more complex your code's logic, the more likely it is to have a strange bug. In these cases, I find the classmethod decorator to be immensely useful. I think the best example of this was from a talk by [James Powell from Don't Use This Code](http://www.dontusethiscode.com) where he uses `pandas` as an example of a library that uses classmethods well.
+You should be using the `@classmethod` decorator when dealing with complex logic. A good example is that of the [Instructor API schema](https://python.useinstructor.com/api/?h=openai#instructor.function_calls.OpenAISchema) which has clear explicit ways for you to instantiate the different API providers.
 
-If you've ever used the library, you'll be familiar with the following methods.
+Let's compare two separate versions of the API. The first is the API that the library used before their v1.0.0 release and the second is their more recent version
 
-- Using a csv file ? - `pandas.read_csv(csv_file)`
-- Using a pickled object ? - `pandas.read_pickle(pickle_file_path)`
-- Using a excel file? - `pandas.read_excel(file_path)`
+```python
+# Pre-V1.0.0
+import instructor
+from openai import OpenAI
 
-Without a classmethod, we'd have to check the file type, then see if we've got all of the necessary information to read in the file. We'd then have to make sure this logic doesn't overlap with the other files we'd like to support. With a classmethod, I don't need to deal with complex edge cases since each classmethod supports just one use-case. 
+client = instructor.patch(OpenAI())
 
+# Post V1
+import instructor
+from openai import OpenAI
 
-I recently worked on writing a script that generated embeddings using different models using SentenceTransformers, OpenAI and Cohere. This was tricky because each of these models need to be used differently, even when initialising them and I finally settled on the code below.
+client = instructor.from_openai(OpenAI())
+```
 
-````python
+Because we're using the classmethod to define explicitly the client that we want to patch, **we get better code readability and improved autocomplete out of the box. this is great for developer productivity**. 
+
+If you ever want to migrate to a separate provider that doesn't support the OpenAI standard, you need to change to a separate classmethod and explicitly make that change in the code.  If the two providers have very different behaviour, this helps you to catch subtle bugs that you otherwise might not have caught.
+
+This is important because the more complex your code's logic is, the more likely for it to have a strange bug. You don't want to be dealing with complex edge cases since you're explicitly declaring the specific clients you're using in your code base. 
+
+### Using Classmethods
+
+I recently worked on a script that generated embeddings using different models using SentenceTransformers, OpenAI and Cohere. This was tricky because each of these models need to be used differently, even when initialising them and I finally settled on the code below.
+
+```python
 import enum
 
 
@@ -49,6 +62,8 @@ class EmbeddingModel:
     ):
         self.model_name = model_name
         self.provider = provider
+        self.max_limit = max_limit
+        self.expected_iterations = expected_iterations
 
     @classmethod
     def from_hf(cls, model_name: str):
@@ -66,8 +81,7 @@ class EmbeddingModel:
     def from_cohere(cls, model_name: str):
         return cls(model_name, provider=Provider.COHERE)
 
-````
-
+```
 
 There are a few things which make the code above good
 
@@ -84,14 +98,17 @@ This might be overstated but I think everyone should take some time to at least 
 - Caching data -> diskcache
 - Validating Objects -> Pydantic 
 - Printing/Formatting things to the console - Rich
+- Working with generators - itertools has a great selection of things like `islice` and automatic batching
+- Writing common counters/dictionary insertion logic etc - use Collections
+- Caching Data/Working with Curried functions? - use functools
 
-If a commonly used libarary provides some functionality, you should use it. It's rarely going to be beneficial to spend hours writing your own version unless it's for educational purposes. The simple but effective hack I've found has been to use a variant of the following prompt.
+If a commonly used library provides some functionality, you should use it. It's rarely going to be beneficial to spend hours writing your own version unless it's for educational purposes. The simple but effective hack I've found has been to use a variant of the following prompt.
 
 ```bash
 I want to do <task>. How can I do so with <commonly used library>. 
 ```
 
-ChatGPT has a nasty habbit of trying to roll its own implementation of everything. I made this mistake recently as usual when I had to log the results of an experiment I did.  ChatGPT suggested I use the `csv` module, manually calculate a set of all of the keys in my data before writing it to a `.csv` file as seen below.
+ChatGPT has a nasty habit of trying to roll its own implementation of everything. I made this mistake recently as usual when I had to log the results of an experiment I did.  ChatGPT suggested I use the `csv` module, manually calculate a set of all of the keys in my data before writing it to a `.csv` file as seen below.
 
 ```python
 import csv
@@ -136,7 +153,7 @@ I think that there are three big benefits to writing simpler functions that don'
 
 I had a pretty complex problem to solve recently with some code - which was to take in a dataset of rows with some text and then embed every sentence inside it. I took some time and wrote an initial draft that looked something like this
 
-``` python
+```python
 def get_dataset_batches(data, dataset_mapping: dict[str, int], batch_size=100):
     """
     In this case, dataset_mapping maps a sentence to a
@@ -181,10 +198,7 @@ def get_unique_sentences(data):
 
 
 def get_sentence_to_id_mapping(sentences: List[str]):
-    mapping = {}
-    for sentence in sentences:
-        mapping[sentence] = len(mapping)
-    return mapping
+    return {s:i for i, s in enumerate(sentence)}
 
 
 def generate_sentence_batches(sentence_mapping: dict[str, int], batch_size=100):
@@ -199,6 +213,8 @@ def generate_sentence_batches(sentence_mapping: dict[str, int], batch_size=100):
         yield batch
 
 ```
+
+> I wrote my own batching function here but you should really be using `itertools.batched` if you're running Python 3.12 and above.
 
 We can then call the function above using a main function like 
 
@@ -223,7 +239,7 @@ I think it's easy to quickly complicate a codebase with premature abstractions w
 
 For instance, an easy way to do this initially is to just return a simple dictionary if the returned value is only being used by a single function. 
 
-```
+```python
 def extract_attributes(data):
     new_data = process_data(data)
     return {"key1": new_data["key1"], "key2": new_data["key2"]}
@@ -259,7 +275,7 @@ def main():
 
 Another example I like a lot is scoring values. Say we want to calculate the recall for a list of predictions that we've made where we have a single known label as our ground truth and a list of other labels as our model's predictions. We might implement it down the line as 
 
-```
+```python
 def calculate_recall(labels,predictions):
     scores = []
     for label,preds in zip(labels,predictions):
@@ -269,7 +285,7 @@ def calculate_recall(labels,predictions):
 
 But what if we'd like to work with other metrics down the line like precision, NDCG or Mean Reciprocal Rank? Wouldn't we then have to declare 4 different functions for this? 
 
-```
+```python
 def calculate_recall_predictions(labels, predictions):
     scores = []
     for label, preds in zip(labels, predictions):
@@ -284,24 +300,24 @@ def calculate_ndcg_predictions(labels,predictions):
     return scores
 ```
 
-A better solution instead is to parameterize the scoring function itself. If you look at the different functions we've defined, they all take in a single label. We're also doing the same thing in each function, which is to score the predictions with respect to a specific output.
+A better solution instead is to parameterise the scoring function itself. If you look at the different functions we've defined, they all take in a single label. We're also doing the same thing in each function, which is to score the predictions with respect to a specific output.
 
 This means that we could rewrite this as seen below
 
-```
+```python
 def score(labels, predictions, score_fn):
     return [score_fn(label, pred) for label, pred in zip(labels, predictions)]
 ```
 
 In fact, we could even go one step further and just represent all of the metrics that we want as a single dictionary.
 
-```
+```python
 SIZES = [3, 10, 15, 25]
 metrics = {"recall": calculate_recall, "mrr": calculate_mrr}
 evals = {}
 
 
-def slice_predictions_at_k(k: int, score):
+def slice_predictions_at_k(score_fn, k:int):
     def wrapper(chunk_id, predictions):
         return score(chunk_id, predictions[:k])
 
@@ -314,7 +330,7 @@ for metric, sz in itertools.product(metrics.keys(), SIZES):
 
 We can then take a given label and list of predictions and calculate the result as 
 
-```
+```python
 def score(labels, predictions):
     return pd.DataFrame(
         [
