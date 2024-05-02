@@ -1,5 +1,3 @@
-// import { getBlogPosts } from 'app/blog/utils'
-
 import { posts } from ".velite";
 
 export const baseUrl = "https://ivanleo.com";

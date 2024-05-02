@@ -1,28 +1,24 @@
-import { baseUrl } from 'app/sitemap'
-import { getBlogPosts } from 'app/blog/utils'
+import { posts } from ".velite";
+import { baseUrl } from "app/sitemap";
 
 export async function GET() {
-  let allBlogs = await getBlogPosts()
-
-  const itemsXml = allBlogs
+  const itemsXml = posts
     .sort((a, b) => {
-      if (new Date(a.metadata.publishedAt) > new Date(b.metadata.publishedAt)) {
-        return -1
+      if (new Date(a.publishedAt) > new Date(b.publishedAt)) {
+        return -1;
       }
-      return 1
+      return 1;
     })
     .map(
       (post) =>
         `<item>
-          <title>${post.metadata.title}</title>
+          <title>${post.title}</title>
           <link>${baseUrl}/blog/${post.slug}</link>
-          <description>${post.metadata.summary || ''}</description>
-          <pubDate>${new Date(
-            post.metadata.publishedAt
-          ).toUTCString()}</pubDate>
+          <description>${post.description || ""}</description>
+          <pubDate>${new Date(post.publishedAt).toUTCString()}</pubDate>
         </item>`
     )
-    .join('\n')
+    .join("\n");
 
   const rssFeed = `<?xml version="1.0" encoding="UTF-8" ?>
   <rss version="2.0">
@@ -32,11 +28,11 @@ export async function GET() {
         <description>This is my portfolio RSS feed</description>
         ${itemsXml}
     </channel>
-  </rss>`
+  </rss>`;
 
   return new Response(rssFeed, {
     headers: {
-      'Content-Type': 'text/xml',
+      "Content-Type": "text/xml",
     },
-  })
+  });
 }
