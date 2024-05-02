@@ -1,16 +1,16 @@
+"use client";
 import Link from "next/link";
-import { formatDate, getBlogPosts } from "app/blog/utils";
+import { formatDate } from "app/blog/utils";
+import { posts } from ".velite";
 
 export function BlogPosts() {
-  let allBlogs = getBlogPosts();
+  let allBlogs = posts;
 
   return (
     <div>
       {allBlogs
         .sort((a, b) => {
-          if (
-            new Date(a.metadata.publishedAt) > new Date(b.metadata.publishedAt)
-          ) {
+          if (new Date(a.publishedAt) > new Date(b.publishedAt)) {
             return -1;
           }
           return 1;
@@ -23,13 +23,13 @@ export function BlogPosts() {
           >
             <div className="w-full flex flex-col md:flex-row space-x-0 md:space-x-2">
               <p className="text-neutral-600 dark:text-neutral-400 w-[150px] tabular-nums">
-                {formatDate(post.metadata.publishedAt, false)}
+                {formatDate(post.publishedAt, false)}
               </p>
               <div className="w-full ">
                 <p className="text-neutral-900 text-lg dark:text-neutral-100 tracking-tight">
-                  {post.metadata.title}
+                  {post.title}
                 </p>
-                <p className="text-xs">{post.metadata.description}</p>
+                <p className="text-xs">{post.description}</p>
               </div>
             </div>
           </Link>

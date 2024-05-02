@@ -38,6 +38,7 @@ export const metadata: Metadata = {
 };
 
 const cx = (...classes) => classes.filter(Boolean).join(" ");
+export const runtime = "edge";
 
 export default function RootLayout({
   children,
