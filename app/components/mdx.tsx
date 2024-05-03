@@ -46,7 +46,14 @@ function CustomLink(props) {
 }
 
 function RoundedImage(props) {
-  return <Image alt={props.alt} className="rounded-lg" {...props} />;
+  return (
+    <Image
+      alt={props.alt}
+      className="rounded-lg"
+      style={{ maxWidth: "400px", maxHeight: "400px" }}
+      {...props}
+    />
+  );
 }
 
 function Code({ children, ...props }) {
@@ -100,6 +107,25 @@ let components = {
   Table,
   InlineMath,
   BlockMath,
+  img: ({ src, alt, ...props }) => (
+    <div style={{ display: "flex", justifyContent: "center" }}>
+      <img src={src} alt={alt} {...props} />
+    </div>
+  ),
+  p: ({ children }) => {
+    // Check if the child is an image
+    const isImage = React.Children.toArray(children).some(
+      (child) => React.isValidElement(child) && child.type
+    );
+
+    if (isImage) {
+      // Render a fragment if the child is an image
+      return <>{children}</>;
+    } else {
+      // Render a paragraph as usual if the child is not an image
+      return <p className="mt-4">{children}</p>;
+    }
+  },
 };
 
 export function CustomMDX(props) {

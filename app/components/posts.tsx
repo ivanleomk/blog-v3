@@ -3,6 +3,7 @@ import { formatDate, getBlogPosts } from "app/blog/utils";
 
 export function BlogPosts() {
   let allBlogs = getBlogPosts();
+  console.log(allBlogs);
 
   return (
     <div>
@@ -15,6 +16,7 @@ export function BlogPosts() {
           }
           return 1;
         })
+        .filter((item) => !item.metadata.draft)
         .map((post) => (
           <Link
             key={post.slug}
