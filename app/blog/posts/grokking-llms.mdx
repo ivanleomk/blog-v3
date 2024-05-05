@@ -1,17 +1,19 @@
 ---
 title: "Grokking LLMs"
 publishedAt: 2024-05-02
-draft: true
 description: Speedrunning everything I learnt in the past year
 ---
 
-## Who am I
 
 I've spent the last year working with LLMs and writing a good amount of technical content on how to use them effectively, mostly with the help of structured parsing using a framework like Instructor. Most of what I know now is self-taught and this is the guide that I wish I had when starting out.
 
-It should take about 10-15 minutes at most to read and I've added some resources along the way that are relevant to you
+It should take about 10-15 minutes at most to read and I've added some resources along the way that are relevant to you. If you're looking for a higher level, i suggest skimming over the first two sections and then focusing more on the application/data side of things! 
 
-## The main problem
+I hope that after reading this essay, you walk away with an enthusiasm that these models are going to change so much things that we know today. We have models with reasoning abilities and knowledge capacities that dwarf many humans today in tasks such as Mathetical Reasoning, QnA and more. 
+
+Please feel free to reach on twitter at @ivanleomk if you're interested to chat more!
+
+# Some Background
 
 ## Quick Definitions
 
@@ -99,16 +101,19 @@ Therefore a simple solution emerged, why not we store all of the prior hidden st
 
 ![RNN Attention](/images/rnn-attention.png)
 
-This helped to achieve some good results and greatly improved experimental outcomes.
+This helped to achieve some good results and greatly improved experimental outcomes. Notably, these hidden states encoded some degree of position because they were incrementally derived from each other, which is something transformer attention needed some tweaks to do.
 
-## Transformers 
+# Transformers 
 
+Transformers were proposed as an alternative to these networks with the key idea that instead of processing one input token at a time, we should evaluate the entire sequence at the same time. They incorporated this idea of attention into the architecture of the model and proposed a new variant of attention they called Scaled Dot Product attention. We'll go through a high level overview of what Attention looks like in a transformer in a bit.
 
-Transformers were proposed as an alternative to these networks with the key idea that instead of processing one input token at a time, we should evaluate the entire sequence at the same time. They incorporated this idea of attention into the architecture of the model and proposed a new variant of attention they called Scaled Dot Product attention.
+If there's anything that I think you should take away from this section, it's that Transformers are more than stochastic parrots that are randomly predicting the next token. At each step they have ~50,000 different choices ( depending on the tokenizer). To achieve good performance on this task, they must learn important inforamtion about the world from the data.
 
-In this article, I won't go through the specifics of attention. I recommend looking at [GPT in 60 Lines of Numpy](https://jaykmody.com/blog/gpt-from-scratch/) and [The Illustrated GPT-2](https://jalammar.github.io/illustrated-gpt2/) which cover this in much greater detail.
+We can think of them as compressing information into the finite storage that they have. Storage here refers to the number of parameters that they have. Larger models perform better because they can store more information but ultimately how much and how good the data they manage to see during training determines their performance to some degree. 
 
-### How they work 
+They're exciting developments because we can prompt them to do tasks we want. We can fine-tune them on specific datasets to get a specific type of outputs but the fact that we can say stuff like no yapping and have it immediately produce shorter responses is nothing short of pure magic.
+
+## How they work 
 
 Your transformer model never sees text directly, instead it just sees tokens.
 
@@ -135,6 +140,105 @@ It has a known mapping of tokens ( think subwords eg. `The `, ` France`) and eac
 This vector has the same size as the mapping it has and corresponds to the probability of a token being the next token in the sequence.
 
 That's why transformers are often known as auto regressive generative models, because they generate predictions for these tokens AND because future generated output are conditioned on prior output tokens that were chosen to be used.
+
+
+## Attention in Transformers
+
+This is a tricky topic and took me some time to understand. I recommend looking at [GPT in 60 Lines of Numpy](https://jaykmody.com/blog/gpt-from-scratch/) and [The Illustrated GPT-2](https://jalammar.github.io/illustrated-gpt2/) which cover this in much greater detail. This is how attention works specifically for decoder-only transformers.
+
+
+Remember how we had the RNN combine different previous hidden states for each individual token? Well, in this case, the magic happens through the following process when we feed our transformer some text.
+
+### Positional Embeddings
+
+First, we break the text down into tokens using a tokenizer.
+
+```
+An Avocado Shake -> [2127, 7671, 47282, 73423]
+```
+
+Next, each token gets mapped to a real number vector, This is known as an embedding. Note that this is a vector that is **learnt during training** and is **unique for each token**. It's supposed to encode some semantic meaning about the token itself. I made up some embeddings here 
+
+```
+sample embeddings => {
+    2127:  [1,2,3,4],
+    7671:  [2,2,2,3],
+    47282: [3,1,2,5],
+    73423: [8,4,3,2]
+}
+
+[2127, 7671, 47282, 73423] 
+=> [
+    [1,2,3,4],
+    [2,2,2,3],
+    [3,1,2,5],
+    [8,4,3,2]
+]
+```
+
+
+Notice here that our token would have the same vector irregardless of position. If it was `Shake an Avacado` vs `an Avacado Shake`, the Shake here refer to two very different things even if it's the same word. 
+
+Therefore, we add what's called a positional encoding. This is just a value that we compute for each number in each vector. It's the same regardless of the token, and only depends on the position of the token. More importantly, the model uses this value with a lot of training to be able to understand the position of the token.
+
+```
+[
+    [1,2,3,4] + [1,2,3,4]
+    [2,2,2,3] + [5,6,7,8]
+    [3,1,2,5] + [9,10,11,12]
+    [8,4,3,2] + [13,14,15,16]
+] 
+=>
+[
+    [2, 4, 6, 8]
+    [7, 8, 9, 11]
+    [12, 11, 13, 17]
+    [21, 18, 18, 18]
+]
+```
+
+
+### Attention Mechanism
+
+Before we go into how it works, I want to point out why attention is needed. For a text model, we want our model to be able to generate some understanding of a specific token in relation to the sentence/input. 
+
+This is important because our model is trained to predict the next token in a sequence. Without a strong understanding of the underlying meaning of each token in the sequence, it's not going to be able to do a good job. 
+
+Therefore, we use attention as a way to do two things
+
+1. Create a representation for each individual token 
+2. Generate a weightage for each token and every token prior to it - we don't want tokens to get information on any of the future tokens after it. That'll be cheating after all
+
+Once we have this, we basically have a new representation for each token that is a weighted sum of all the relevant tokens prior to it. More importantly, there were two big improvements for transformers as compared to RNNs
+
+1. The entire input sequence could be trained in parallel since we're just doing basic matrix multiplication. Compare this to an RNN which processes each input token incrementally. This meant that we could scale our datasets to much larger sizes, allow our model to learn better representations of data and in turn make better predictions.
+2. By splitting up the generated representation using multi-head attention, we can allow our model to learn to process different semantic meaning in each subset of the vector. This means that we could extract much richer representations.
+
+This is on a high level how attention works
+
+![Multi Head Attention](/images/mha.png)
+
+We basically take our input representation and multiply it with three separate matrices and get back three new matrices. These are known as the Query, Key and Value Matrix. It's easiest to think about them as 
+
+- Query : What each token is looking for
+- Key : What each token can offer to other tokens 
+- Value : Some semantic meaning
+
+We multiply our generated Query and Key matrix together and get a weightage for each token at each position. Taking our earlier tokens for example, we might get something like what we see below when we multiply our query and key matrix together.
+
+```
+[
+    [1.0, 0.0, 0.0, 0.0],
+    [0.2, 0.5, 0.0, 0.0],
+    [0.3, 0.2, 0.5, 0.0],
+    [0.1, 0.1, 0.3, 0.5]
+]
+```
+
+Next, we perform a matrix multiplication of this matrix with the value matrix. This operation aggregates the values for each token across each row, weighted according to the defined percentages in each row. Once we've done so, we feed it through a normal linear network that further enriches this vector of numbers.
+
+The way I like to think about it is that the attention operation combines semantic meaning of different tokens at each position while the linear layer helps us to make sense of this new information. We then do this multiple times and the final result helps generate the prediction.
+
 
 ## Training a Model
 
@@ -228,10 +332,11 @@ The key idea here is that we take a new model ( this could be the same model its
 
 ![Loss Function](/images/rlhf-reward-function.png)
 
+We're using a log sigmoid function here. So that means that the greater the positive difference between the two generated values, the smaller the loss. 
+
 There's a key reason why we do so - it's much easier for us to get labellers to compare answers than to write new prompts from scratch. Therefore, we can generate a much larger dataset for the same cost.
 
 Since it's easy to get our language model to generate prompts, all we then need to do is make sure that the reward model eventually learns to rank responses similarly to the labellers themselves. 
-
 
 ### Current Work
 
@@ -276,9 +381,64 @@ There are a few different use-cases that will keep popping up
 2. Workflows 
 3. RAG
 
-Let's walk through them and roughly understand what the challenges are. It's important here to re-iterate that LLMs 
+Let's walk through them and roughly understand what the challenges are. It's important here to re-iterate that LLMs are difficult to work with because of ther non-deterministic nature.
+
+
+## Workflows
+
+An easy fit for LLMs therefore are simple tasks. 
+
+```
+Prompt: Here's an email : <email>. Please classify as spam or not spam.
+Response: Spam
+```
+
+By prompting the model to perform a specific task, we can use LLMs to easily work with data in different forms. They're very good at understanding text because of how much text they've seen. But, this often means that we might get back nonsense or text in the wrong format. 
+
+```
+Prompt: Here's an email : <email>. Please classify as spam or not spam.
+Bad Response: SPAM
+Bad Response: Thank you for the great question! I think that this is probably a spam email
+```
+
+It's helpful to slap on some validation on the results. I like using [Instructor](https://python.useinstructor.com/) which provides an easy way to work with structured outputs with your favourite llm provider. 
+
+If you choose to go down the workflow route, you should in turn be thinking a bit about 
+
+1. How can I capture my outputs? - eg Logfire 
+2. Can I add in specific validation to my outputs? - eg Pydantic + a second call to another model to validate the output of the first
+3. Can I off-load specific portions of a task to other models / start fine-tuning - eg. We generate a lot of data using an LLM. Can we train a BERT model to replace parts of it?
+
+In short, you want to start with expensive models that don't need that much hand holding, get a lot of training data from users then progressively move on to smaller models optimised for one specific section of the task. User data will always be better than any synthetic data you can generate. 
+
+But, We can do so much more than this! By getting models to output a response in a specific format, we can hook up our models to real-world systems that enable it to perform actions such as send an email, execute terminal commands or even search the web! See [Gorilla](https://gorilla.cs.berkeley.edu/) for an example of a model that is tuned to do so.
+
+## RAG 
+
+
+RAG is short for retrieval augmented generation. Remember how I mentioned earlier that models are essentially building a world model. This means that they have a fixed state of the world and will not be able to answer questions about specific domains (Eg. your company insurance policies ) or facts that happened that weren't included in their training data (Eg. recent news/events )
+
+So, a common use-case is to inject this information into the prompt itself so the model knows what you care about.
+
+```
+<|im_start|>system
+You are InternLM2-Chat, a harmless AI assistant<|im_end|>
+<|im_start|>assistant
+Here is some relevant information on the user's query
+- The latest product offering is our Penguin C2 
+- The C2 is retailing for 200 bucks 
+Make sure to only state what you know<|im_end|>
+```
+
+By injecting this information into the prompt, the model is able to get access to up to date information, and thus generate better responses. While initially, we can find relevant chunks using embeddings, whole systems will need to be built around these chatbots to reliably/accurately extract and find the right chunks to inject into the prompt on demand. This is a huge and complex decision.
+
+See [Rag Is More Than Embedding Search](https://python.useinstructor.com/blog/2023/09/17/rag-is-more-than-just-embedding-search/) for a better overview. 
 
 ## Agents 
+
+Now, we've covered how to get LLMs to perform specific tasks and get up to date information that wasn't in their training data. So, what happens if we let transformers run wild? Well, that's the idea of an agent.
+
+Basically we get the model to keep running until some abstract objective is reached (Eg. Build me a todo list) and that often takes a long time. A cool example of an agent is [Devin](https://www.cognition-labs.com/introducing-devin), a LLM that has been fine-tuned and trained to create/contribute to massive code-bases on its own.
 
 Agents became popularized through libraries such as AutoGPT where people used to give a starting prompt and then let the model run wild for many many hours. This was an extension of a prompting framework called [ReACT](https://www.promptingguide.ai/techniques/react) which gets the model to generate reasoning before deciding on an action. 
 
@@ -298,49 +458,7 @@ Colorado and surrounding areas.
 ... continue execution
 ```
 
-Langchain popularised this concept using `Chains` - allowing users to define specific ReACT agents and chaining these calls together. 
-
-## Workflows
-
-Workflows are a bit more task specific - instead of allowing an agent to go off the rails, instead we have a specific task in mind and we want to get a model to perform it. 
-
-Here's a quick example from the [Instructor](https://python.useinstructor.com/) library which provides an easy way to work with structured outputs with your favourite llm provider.
-
-```python
-for text, label in [
-        ("Hey Jason! You're awesome", "NOT_SPAM"),
-        ("I am a nigerian prince and I need your help.", "SPAM"),
-    ]:
-        prediction = classify(text)
-        assert prediction.label == label
-        print(f"Text: {text}, Predicted Label: {prediction.label}")
-        #> Text: Hey Jason! You're awesome, Predicted Label: NOT_SPAM
-        #> Text: I am a nigerian prince and I need your help., Predicted Label: SPAM
-```
-
-If you choose to go down the workflow route, you should in turn be thinking a bit about 
-
-1. How can I capture my outputs? - eg Logfire 
-2. Can I add in specific validation to my outputs? - eg Pydantic + a second call to another model to validate the output of the first
-3. Can I off-load specific portions of a task to other models / start fine-tuning - eg. We generate a lot of data using an LLM. Can we train a BERT model to replace parts of it?
-
-Some people enjoy using DSPy but I've personally never tried it so I can't comment on how it well it works
-
-## RAG 
-
-RAG is short for retrieval augmented generation. Our models have a fixed amount of information that they know and all of it is learnt during the training stage. So, a common use-case is to inject contextual information into the prompt itself so the model knows what you care about.
-
-```
-<|im_start|>system
-You are InternLM2-Chat, a harmless AI assistant<|im_end|>
-<|im_start|>assistant
-Here is some relevant information on the user's query
-- The latest product offering is our Penguin C2 
-- The C2 is retailing for 200 bucks 
-Make sure to only state what you know<|im_end|>
-```
-
-By injecting this information into the prompt, the model is able to get access to up to date information, and thus generate better responses. While initially, we can find relevant chunks using embeddings, whole systems will need to be built around these chatbots to reliably/accurately extract and find the right chunks to inject into the prompt on demand. 
+Langchain also has a similar concept called `Chains` - allowing users to define specific ReACT agents and chaining these calls together.
 
 # What's next?
 

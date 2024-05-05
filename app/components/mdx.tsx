@@ -58,7 +58,13 @@ function RoundedImage(props) {
 
 function Code({ children, ...props }) {
   let codeHTML = highlight(children);
-  return <code dangerouslySetInnerHTML={{ __html: codeHTML }} {...props} />;
+  return (
+    <code
+      className="my-4"
+      dangerouslySetInnerHTML={{ __html: codeHTML }}
+      {...props}
+    />
+  );
 }
 
 function slugify(str) {
@@ -126,6 +132,7 @@ let components = {
       return <p className="mt-4">{children}</p>;
     }
   },
+  pre: ({ children }) => <pre className="my-4">{children}</pre>,
 };
 
 export function CustomMDX(props) {
