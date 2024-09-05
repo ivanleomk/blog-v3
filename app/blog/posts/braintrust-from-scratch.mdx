@@ -234,29 +234,30 @@ We can see that the code works just as well, but it runs a lot faster. Better ye
 
 ## Quick Tips
 
-Lastly, I'll leave you with a few quick tips that might help you get started with Braintrust.
+Lastly, I'll leave you with a few quick tips to help make better use of Braintrust.
 
 1. Use the hooks method in Braintrust to log arbitrary information. I've found this to be very useful when you go back and try to understand why a certain model performed better than another. Better yet, having the data captured as is, helps significantly with debugging and finding difficult/challenging edge cases.
 
 ```python
-async def task(question: str):
+async def task(question: str, hooks):
     class Answer(BaseModel):
         chain_of_thought: str
         answer: int
 
-    resp = (
-        await client.chat.completions.create(
-            model="gpt-4o-mini",
-            response_model=Answer,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a helpful assistant that solves math problems. You are given a question and you need to solve it. You need to provide the answer and the steps to solve the problem.",
-                },
-                {"role": "user", "content": question},
-            ],
-        )
+    messages = [
+        {
+            "role": "system",
+            "content": "You are a helpful assistant that solves math problems. You are given a question and you need to solve it. You need to provide the answer and the steps to solve the problem.",
+        },
+        {"role": "user", "content": question},
+    ]
+    resp = await client.chat.completions.create(
+        model=model,
+        response_model=Answer,
+        messages=messages,
     )
+    hooks.meta(response_object=resp.model_dump_json(indent=2), messages=messages)
+    return resp.answer
 
 ```
 
